@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Keys Tester</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 API Keys Tester</h1>
+        
+        <div class="controls">
+            <select id="providerSelect" onchange="loadModels()">
+                <option value="">Select Provider</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+            </select>
+            
+            <select id="modelSelect" disabled>
+                <option value="">Select Model</option>
+            </select>
+        </div>
+
+        <div class="chat-container">
+            <textarea id="messageInput" placeholder="Type your message..."></textarea>
+            <button onclick="sendMessage()">Send</button>
+            <div id="response" class="response-box"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadModels() {
+            const provider = document.getElementById('providerSelect').value;
+            if (!provider) return;
+
+            try {
+                const response = await fetch('/get_models', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({provider})
+                });
+                
+                const data = await response.json();
+                const modelSelect = document.getElementById('modelSelect');
+                
+                modelSelect.innerHTML = '<option value="">Select Model</option>';
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+                
+                modelSelect.disabled = false;
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function sendMessage() {
+            const provider = document.getElementById('providerSelect').value;
+            const model = document.getElementById('modelSelect').value;
+            const message = document.getElementById('messageInput').value;
+            const responseBox = document.getElementById('response');
+
+            if (!provider || !model || !message) {
+                showError('Please fill all fields');
+                return;
+            }
+
+            responseBox.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({provider, model, message})
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    responseBox.innerHTML = data.response;
+                } else {
+                    showError(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function showError(message) {
+            const responseBox = document.getElementById('response');
+            responseBox.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+    </script>
+</body>
+</html>
